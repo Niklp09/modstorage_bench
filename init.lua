@@ -1,94 +1,81 @@
-local storage = minetest.get_mod_storage()
-local us = minetest.get_us_time
-local globaltook, benchmarks = 0, 0
-local runs = 100000
+local mod_storage = minetest.get_mod_storage()
+local get_time = minetest.get_us_time
 
--- https://stackoverflow.com/a/50082540
-local function short(number, decimals)
-	local power = 10^decimals
-	return math.floor(number * power) / power
+local iterations = 100000
+local batches = 3
+local round_results = true
+local benchmarks, duration
+
+local function round(number, decimal_places)
+	local multiplier = 10^(decimal_places or 0)
+	return math.floor(number * multiplier + 0.5) / multiplier
 end
 
-local function v(time)
-	if time > 1000 then
-		return short(time/1000, 2) .. "ms"
-	end
-	return short(time, 2) .. "us"
-end
-
-local function benchmark(name, func)
-	benchmarks = benchmarks + 1
-	local min, max, runtime = 0, 0, 0
-	for i = 1, runs do
-		local key = "k" .. i -- "1" or 1
-		local b2 = us()
-		func(key)
-		local took = us() - b2
-
-		if took > max then
-			max = took
-		elseif took < min or min == 0 then
-			min = took
+local function pt(time)
+	if round_results then
+		if time > 1000000 then
+			return round(time / 1000000, 2).."s"
+		elseif time > 1000 then
+			return round(time / 1000, 2).."ms"
+		else
+			return round(time, 2).."us"
 		end
-		runtime = runtime + took
+	else
+		return time.."us"
 	end
-	print("checked funtion " .. name .. ":")
-	print("total runtime: " .. v(runtime) .. "; avg: " .. v(runtime/runs) .. "; min: " .. v(min) .. "; max: " .. v(max))
-	print("--------------------")
-	globaltook = globaltook + runtime
 end
 
-minetest.register_chatcommand("bench", {
-	func = function(name)
-		-- clean modstorage
-		storage:from_table({fields = {}})
+local function run_test(name, param_count, func)
+	benchmarks = benchmarks + 1
+	local dur, min, max, took = 0, 999999999, 0, 0
+	for i = 1, iterations do
+		local param1 = "abc"..i
+		if param_count == 1 then
+			took = get_time()
+			func(param1)
+			took = get_time() - took
+		elseif param_count == 2 then
+			local param2 = "xyz"..i
+			took = get_time()
+			func(param1, param2)
+			took = get_time() - took
+		else
+			error("Invalid param_count: "..tostring(param_count))
+		end
+		if took < min then min = took end
+		if took > max then max = took end
+		dur = dur + took
+	end
+	duration = duration + dur
+	print(name..": "..
+		"   TIME: "..pt(dur)..
+		"   MIN: "..pt(min)..
+		"   MAX: "..pt(max)..
+		"   AVG: "..pt(dur / iterations))
+end
 
-		-- contains
-		benchmark("contains - static - nil key", function(i)
-			storage:contains("mykey")
-		end)
+local function run_tests()
+	for i = 1, batches do
+		mod_storage:from_table({}) -- clear mod_storage
+		benchmarks = 0
+		duration = 0
+		print("BATCH "..i..": test results with "..tostring(iterations).." iterations per function:")
+		run_test("mod_storage:set_int()", 2, function(...) mod_storage:set_string(...) end)
+		run_test("mod_storage:get_int()", 1, function(...) mod_storage:set_string(...) end)
+		run_test("mod_storage:set_string()", 2, function(...) mod_storage:set_string(...) end)
+		run_test("mod_storage:get_string()", 1, function(...) mod_storage:get_string(...) end)
+		run_test("mod_storage:contains()", 1, function(...) mod_storage:contains(...) end)
+		print(benchmarks.." benchmarks done")
+		print("Overall time spend for modstorage: "..pt(duration).." average duration per call: "..pt(duration / (benchmarks * iterations)))
+	end
+	mod_storage:from_table({}) -- clear mod_storage again
+end
 
-		benchmark("contains - random - nil key", function(i)
-			storage:contains(i)
-		end)
-
-		storage:set_string("mykey", "abcd")
-
-		benchmark("contains - static - set key", function(i)
-			storage:contains("mykey")
-		end)
-
-		benchmark("contains - random - set key", function(i)
-			storage:contains(i)
-		end)
-
-		-- get
-		benchmark("get - static - nil key", function(i)
-			storage:get("mykey2")
-		end)
-
-		benchmark("get - random - nil key", function(i)
-			storage:get(i)
-		end)
-
-		benchmark("get - static - set key", function(i)
-			storage:get("mykey")
-		end)
-
-		-- set_int
-		benchmark("set - static", function(i)
-			storage:set_string("mykey", "myvalue")
-		end)
-
-		benchmark("set - random - one key", function(i)
-			storage:set_string("mynewkey", i)
-		end)
-
-		benchmark("set - random - random keys", function(i)
-			storage:set_string(i, i)
-		end)
-
-		print("--------------------")
-		print("Overall avg " .. v(globaltook/(benchmarks * runs)) .. "!")
+minetest.register_chatcommand("test_modstorage_speed", {
+	privs = { server = true },
+	func = function(player_name)
+		minetest.chat_send_player(player_name, "Starting modstorage speed test...")
+		run_tests()
+		return true, "Done "..benchmarks.." benchmarks in "..batches.." batches. Check console for results."
 	end
 })
