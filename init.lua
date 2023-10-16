@@ -1,10 +1,13 @@
 local storage = minetest.get_mod_storage()
 local us = minetest.get_us_time
+local globalavg, benchmarks = 0, 0
+local runs = 100000
 
 local function benchmark(name, func)
+	benchmarks = benchmarks + 1
 	local min, max = 0, 0
 	local before = us()
-	for i = 1, 100000 do
+	for i = 1, runs do
 		local b2 = us()
 		func(i)
 		local took = us()- b2
@@ -16,8 +19,9 @@ local function benchmark(name, func)
 	end
 	local after = us() - before
 	print("checked funtion " .. name .. ":")
-	print("avg: " .. after/100000 .. "us; min: " .. min .. "us; max: " .. max)
+	print("avg: " .. after/runs .. "us; min: " .. min .. "us; max: " .. max)
 	print("--------------------")
+	globalavg = globalavg + after
 end
 
 minetest.register_chatcommand("bench", {
@@ -66,5 +70,8 @@ minetest.register_chatcommand("bench", {
 		benchmark("set - random - random keys", function(i)
 			storage:set_int(i, i)
 		end)
+
+		print("--------------------")
+		print("Overall avg " .. globalavg/(benchmarks * runs) .. "us!")
 	end
 })
