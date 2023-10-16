@@ -66,7 +66,8 @@ local function run_tests()
 		run_test("mod_storage:get_string()", 1, function(...) mod_storage:get_string(...) end)
 		run_test("mod_storage:contains()", 1, function(...) mod_storage:contains(...) end)
 		print(benchmarks.." benchmarks done")
-		print("Overall time spend for modstorage: "..pt(duration).." average duration per call: "..pt(duration / (benchmarks * iterations)))
+		local avg_dur = duration / (benchmarks * iterations)
+		print("Overall time spend for modstorage: "..pt(duration).." average duration per call: "..pt(avg_dur))
 	end
 	mod_storage:from_table({}) -- clear mod_storage again
 end
