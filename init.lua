@@ -23,21 +23,35 @@ end
 minetest.register_chatcommand("bench", {
 	func = function(name)
 		-- contains
-		benchmark("contains - static", function(i)
+		benchmark("contains - static - nil key", function(i)
 			storage:contains("mykey")
 		end)
 
-		benchmark("contains - random", function(i)
+		benchmark("contains - random - nil key", function(i)
+			storage:contains(i)
+		end)
+
+		storage:set_string("mykey", "abcd")
+
+		benchmark("contains - static - set key", function(i)
+			storage:contains("mykey")
+		end)
+
+		benchmark("contains - random - set key", function(i)
 			storage:contains(i)
 		end)
 
 		-- get
-		benchmark("get - static", function(i)
-			storage:get("mykey")
+		benchmark("get - static - nil key", function(i)
+			storage:get("mykey2")
 		end)
 
-		benchmark("get - random", function(i)
+		benchmark("get - random - nil key", function(i)
 			storage:get(i)
+		end)
+
+		benchmark("get - static - set key", function(i)
+			storage:get("mykey")
 		end)
 
 		-- set_int
@@ -45,8 +59,12 @@ minetest.register_chatcommand("bench", {
 			storage:set_string("mykey", "myvalue")
 		end)
 
-		benchmark("set - random", function(i)
+		benchmark("set - random - one key", function(i)
 			storage:set_int("mynewkey", i)
+		end)
+
+		benchmark("set - random - random keys", function(i)
+			storage:set_int(i, i)
 		end)
 	end
 })
