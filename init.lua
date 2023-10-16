@@ -3,6 +3,19 @@ local us = minetest.get_us_time
 local globalavg, benchmarks = 0, 0
 local runs = 100000
 
+-- https://stackoverflow.com/a/50082540
+local function short(number, decimals)
+	local power = 10^decimals
+	return math.floor(number * power) / power
+end
+
+local function v(time)
+	if time > 1000 then
+		return short(time/1000, 2) .. "ms"
+	end
+	return short(time, 2) .. "us"
+end
+
 local function benchmark(name, func)
 	benchmarks = benchmarks + 1
 	local min, max = 0, 0
@@ -19,7 +32,7 @@ local function benchmark(name, func)
 	end
 	local after = us() - before
 	print("checked funtion " .. name .. ":")
-	print("total runtime: " .. after .. "us; avg: " .. after/runs .. "us; min: " .. min .. "us; max: " .. max .. "us")
+	print("total runtime: " .. v(after) .. "; avg: " .. v(after/runs) .. "; min: " .. v(min) .. "; max: " .. v(max))
 	print("--------------------")
 	globalavg = globalavg + after
 end
@@ -72,6 +85,6 @@ minetest.register_chatcommand("bench", {
 		end)
 
 		print("--------------------")
-		print("Overall avg " .. globalavg/(benchmarks * runs) .. "us!")
+		print("Overall avg " .. v(globalavg/(benchmarks * runs)) .. "!")
 	end
 })
