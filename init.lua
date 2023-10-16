@@ -13,13 +13,13 @@ local function benchmark(name, func)
 		local took = us()- b2
 		if took > max then
 			max = took
-		elseif took < min then
+		elseif took < min or min == 0 then
 			min = took
 		end
 	end
 	local after = us() - before
 	print("checked funtion " .. name .. ":")
-	print("avg: " .. after/runs .. "us; min: " .. min .. "us; max: " .. max)
+	print("total runtime: " .. after .. "us; avg: " .. after/runs .. "us; min: " .. min .. "us; max: " .. max .. "us")
 	print("--------------------")
 	globalavg = globalavg + after
 end
